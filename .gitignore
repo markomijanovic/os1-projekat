@@ -1,0 +1,12 @@
+# Kompajlirani fajlovi i folderi
+build/
+kernel
+kernel.asm
+.gdbinit
+
+# Razno đubre
+*.o
+*.d
+*.lst
+*.log
+*.aux
