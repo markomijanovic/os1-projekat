@@ -3,16 +3,16 @@
 #include "list.hpp"
 
 
-class CCB;
+class TCB;
 
 class Scheduler {
 private:
-    static List<CCB> readyCoroutineQueue;
+    static List<TCB> readyCoroutineQueue;
 
 public:
-    static CCB *get();
+    static TCB *get();
 
-    static void put(CCB *ccb);
+    static void put(TCB *ccb);
 };
 
 #endif

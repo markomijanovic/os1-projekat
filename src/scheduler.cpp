@@ -2,14 +2,14 @@
 // Created by student on 14. 5. 2026..
 //
 #include "../h/scheduler.hpp"
-#include "../h/ccb.hpp"
+#include "../h/tcb.hpp"
 
-List<CCB> Scheduler::readyCoroutineQueue;
+List<TCB> Scheduler::readyCoroutineQueue;
 
-CCB *Scheduler::get() {
+TCB *Scheduler::get() {
     return readyCoroutineQueue.removeFirst();
 }
 
-void Scheduler::put(CCB *ccb) {
+void Scheduler::put(TCB *ccb) {
     readyCoroutineQueue.addLast(ccb);
 }

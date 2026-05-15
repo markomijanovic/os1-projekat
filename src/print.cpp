@@ -2,37 +2,54 @@
 // Created by student on 14. 5. 2026..
 //
 #include "../h/print.hpp"
+
+#include "../h/riscv.hpp"
 #include "../lib/console.h"
 
-void printString(const char *string) {
-    while (*string != '\0') {
+void printString(const char *string)
+{
+    uint64 sstatus=Riscv::r_sstatus();
+    Riscv::mc_sstatus(Riscv::SSTATUS_SIE);
+    while (*string != '\0')
+    {
         __putc(*string);
         string++;
     }
+    Riscv::ms_sstatus(sstatus & Riscv::SSTATUS_SIE?Riscv::SSTATUS_SIE:0);
+
 }
 
-void printInteger(uint64 integer) {
+void printInteger(uint64 integer)
+{
+    uint64 sstatus=Riscv::r_sstatus();
+    Riscv::mc_sstatus(Riscv::SSTATUS_SIE);
     static char digits[] = "0123456789";
     char buf[16];
     int i, neg;
     uint x;
 
     neg = 0;
-    if (integer < 0) {
+    if (integer < 0)
+    {
         neg = 1;
         x = -integer;
-    } else {
+    } else
+    {
         x = integer;
     }
 
     i = 0;
-    do {
+    do
+    {
         buf[i++] = digits[x % 10];
     } while ((x = x / 10) != 0);
-    if (neg) {
+    if (neg)
+    {
         buf[i++] = '-';
     }
-    while (--i >= 0) {
+    while (--i >= 0)
+    {
         __putc(buf[i]);
     };
+    Riscv::ms_sstatus(sstatus & Riscv::SSTATUS_SIE?Riscv::SSTATUS_SIE:0);
 }
