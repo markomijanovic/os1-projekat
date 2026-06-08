@@ -83,7 +83,7 @@ void *MemoryAllocator::mem_alloc(size_t size)
             new_free_block->prev->next = new_free_block;
         }else
         {
-            free->next = new_free_block;
+            free = new_free_block;
         }
 
         if (new_free_block->next)
@@ -98,7 +98,7 @@ void *MemoryAllocator::mem_alloc(size_t size)
             allocated->prev->next = allocated->next;
         }else
         {
-            free->next = allocated->next;
+            free = allocated->next;
         }
         if (allocated->next)
         {
@@ -149,7 +149,7 @@ MemoryAllocator::MCB *MemoryAllocator::freeMCBs_join(MCB *left, MCB *right)
         right->prev->next=left;
     }else
     {
-        free->next=left;
+        free=left;
     }
     if (right->next)
     {
@@ -161,7 +161,7 @@ MemoryAllocator::MCB *MemoryAllocator::freeMCBs_join(MCB *left, MCB *right)
 
 int MemoryAllocator::mem_free(void *ptr)
 {
-    if (ptr==nullptr || !((uint64)ptr>=heap_start_aligned && ptr<heap_end_aligned))
+    if (ptr==nullptr || !((uint64)ptr>=heap_start_aligned && (uint64)ptr<heap_end_aligned))
     {
         return -1;
     }
@@ -176,7 +176,7 @@ int MemoryAllocator::mem_free(void *ptr)
     MCB* right= (MCB*)((uint64)to_delete+ to_delete->size*MEM_BLOCK_SIZE);
 
     //Provjera da desni nije van opsega slucajno
-    if (!((uint64)right<heap_end_aligned || (uint64)right>=heap_start_aligned))
+    if ((uint64)right<heap_end_aligned || (uint64)right>=heap_start_aligned)
     {
         right=nullptr;
     }
