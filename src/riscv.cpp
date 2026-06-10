@@ -1,9 +1,7 @@
-//
-// Created by student on 14. 5. 2026..
-//
 #include "../h/riscv.hpp"
 #include "../lib/console.h"
 #include "../h/tcb.hpp"
+#include "../h/MemoryAllocator.hpp" // OBAVEZNO: Uključujemo naš alokator memorije
 
 void Riscv::popSppSpie()
 {
@@ -11,46 +9,74 @@ void Riscv::popSppSpie()
     __asm__ volatile ("sret");
 }
 
-void Riscv::handleSupervisorTrap()
+// Funkcija sada stoji SAMA (nije Riscv::), uzima parametre i vraca vrednost
+extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a3, uint64 a4)
 {
-    uint64 scause= r_scause();
-    if (scause==0x0000000000000009UL)
-    {
-        //interrupt: no, cause code:environment call form S-mode (9)
-        uint64 sepc = r_sepc() + 4;
-        uint64 sstatus= r_sstatus();
-        TCB::timeSliceCounter= 0;
-        TCB::dispatch();
-        w_sstatus(sstatus);
-        w_sepc(sepc);
+    uint64 scause = Riscv::r_scause();
+    uint64 retVal = a0;
 
-
-    }else if (scause ==0x8000000000000001UL)
+    if (scause == 0x0000000000000009UL || scause == 0x0000000000000008UL)
     {
-        //interupt: yes,cause code: supervisor softvare interupt(timer)
-        TCB::timeSliceCounter++;
-        if (TCB::timeSliceCounter>=TCB::running->getTimeSlice())
+        // VOLATILE je apsolutno KLJUČAN ovde da nas promena konteksta ne bi uništila!
+        volatile uint64 sepc = Riscv::r_sepc() + 4;
+        volatile uint64 sstatus = Riscv::r_sstatus();
+
+        if (a0 == 0x01) {
+            retVal = (uint64)MemoryAllocator::mem_alloc((size_t)a1);
+        }
+        else if (a0 == 0x02) {
+            retVal = (uint64)MemoryAllocator::mem_free((void*)a1);
+        }
+        else if (a0 == 0x11)
         {
-            uint64 sepc = r_sepc();
-            uint64 sstatus= r_sstatus();
-            TCB::timeSliceCounter= 0;
+            // thread_create
+            TCB** handle = (TCB**)a1;
+            *handle = TCB::createThread((TCB::Body)a2, (void*)a3);
+            if (*handle != nullptr) {
+                retVal = 0; // Uspeh
+            } else {
+                retVal = -1; // Greška
+            }
+        }
+        else if (a0 == 0x12)
+        {
+            // thread_exit
+            TCB::running->setFinished(true);
+            TCB::timeSliceCounter = 0;
             TCB::dispatch();
-            w_sstatus(sstatus);
-            w_sepc(sepc);
+        }
+        else if (a0 == 0x13)
+        {
+            // thread_dispatch
+            TCB::timeSliceCounter = 0;
+            TCB::dispatch();
         }
 
-
-        mc_sip(SIP_SSIP);
-
-    }else if (scause ==0x8000000000000009UL)
-    {
-        //interupt: yes,cause code: supervisor external interupt(console)
-        console_handler();
-    }else
-    {
-        //unexpected trap cause
-        //print(scause)
-        //print(sepc)
-        //print(stval)
+        Riscv::w_sstatus(sstatus);
+        Riscv::w_sepc(sepc);
     }
+    else if (scause == 0x8000000000000001UL)
+    {
+        Riscv::mc_sip(Riscv::SIP_SSIP); // Prvo cistimo prekid!
+        TCB::timeSliceCounter++;
+
+        if (TCB::timeSliceCounter >= TCB::running->getTimeSlice())
+        {
+            // VOLATILE je apsolutno KLJUČAN i ovde!
+            volatile uint64 sepc = Riscv::r_sepc();
+            volatile uint64 sstatus = Riscv::r_sstatus();
+
+            TCB::timeSliceCounter = 0;
+            TCB::dispatch();
+
+            Riscv::w_sstatus(sstatus);
+            Riscv::w_sepc(sepc);
+        }
+    }
+    else if (scause == 0x8000000000000009UL)
+    {
+        console_handler();
+    }
+
+    return retVal;
 }

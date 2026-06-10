@@ -6,20 +6,24 @@
 
 #include "../h/riscv.hpp"
 #include "../h/scheduler.hpp"
+#include "../h/syscall_c.hpp"
 
 //extern "C" void pushRegisters();
 TCB *TCB::running = nullptr;
 
 uint64 TCB::timeSliceCounter = 0;
 
-TCB *TCB::createThread(Body body)
+TCB *TCB::createThread(Body body,void * arg)
 {
-    return new TCB(body, TIME_SLICE);
+    return new TCB(body,arg, TIME_SLICE);
 }
 
 void TCB::yield()
 {
-    __asm__ volatile ("ecall"); // ovdje skacemo u prekidnu rutinu gdje radimo promenu konteksta
+    // Koristimo sirovi asembler da nasilno upišemo 0x13 u a0.
+    // Na ovaj način sprečavamo GCC prevodilac da optimizuje i obriše vrednost!
+    __asm__ volatile ("li a0, 0x13");
+    __asm__ volatile ("ecall");
 }
 
 void TCB::dispatch()
@@ -36,8 +40,16 @@ void TCB::dispatch()
 
 void TCB::threadWrapper()
 {
-    Riscv::popSppSpie();
-    running->body();
-    running->setFinished(true);
-    TCB::yield();
+    // OBRISANO: Riscv::popSppSpie(); jer 'sret' pravi haos sa privilegijama!
+
+    // Umesto toga, samo ručno palimo prekide za novu nit:
+    Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
+
+    if (running->body)
+    {
+        // Ažurirano: Sada prosleđujemo argument funkciji!
+        running->body(running->arg);
+    }
+    // Ažurirano: Umesto ručnog gašenja, sada zovemo naš novi sistemski poziv!
+    thread_exit();
 }

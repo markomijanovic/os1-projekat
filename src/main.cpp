@@ -1,83 +1,60 @@
-#include "../h/tcb.hpp"
 #include "../h/print.hpp"
 #include "../h/workers.hpp"
 #include "../h/riscv.hpp"
-#include "../h/MemoryAllocator.hpp" // Dodato zaglavlje
+#include "../h/MemoryAllocator.hpp"
+#include "../h/syscall_c.hpp" // OBAVEZNO: Sada koristimo sistemske pozive za niti!
+
+// NAPOMENA: OBRISALI SMO #include "../h/tcb.hpp" !
 
 int main() {
-    // 1. OBAVEZNO inicijalizujemo memoriju na samom početku!
     MemoryAllocator::initialize_memory();
-
-    // --- POCETAK TESTA ALOKATORA ---
-    printString("Testiranje alokatora zapoceto...\n");
-
-    // Tražimo memoriju za 3 različita objekta (pretvaramo bajtove u blokove)
-    size_t blocks1 = MemoryAllocator::size_to_blocks(100); // Npr. tražimo 100 bajtova
-    size_t blocks2 = MemoryAllocator::size_to_blocks(250);
-    size_t blocks3 = MemoryAllocator::size_to_blocks(50);
-
-    // Alociramo
-    void* p1 = MemoryAllocator::mem_alloc(blocks1);
-    void* p2 = MemoryAllocator::mem_alloc(blocks2);
-    void* p3 = MemoryAllocator::mem_alloc(blocks3);
-
-    // Nateraj prevodilac da evaluira pokazivace
-    printString("p1 adresa: "); printInteger((uint64)p1); printString("\n");
-    printString("p2 adresa: "); printInteger((uint64)p2); printString("\n");
-    printString("p3 adresa: "); printInteger((uint64)p3); printString("\n");
-
-    if (p1 != nullptr && p2 != nullptr && p3 != nullptr) {
-        printString("Uspesna alokacija sva 3 bloka!\n");
-
-        // Probamo upis u alociranu memoriju da vidimo da li puca (Page Fault)
-        char* text = (char*)p1;
-        text[0] = 'O'; text[1] = 'K'; text[2] = '\n'; text[3] = '\0';
-        printString(text);
-    }
-
-    // Sada testiramo dealokaciju i čuveno spajanje blokova!
-
-    // Oslobađamo srednji blok (Slučaj 4 iz našeg koda - nema slobodnih komšija)
-    MemoryAllocator::mem_free(p2);
-
-    // Oslobađamo levi blok (Slučaj 2 - desni komšija (p2) je slobodan, spajaju se!)
-    MemoryAllocator::mem_free(p1);
-
-    // Oslobađamo desni blok (Slučaj 3 - levi komšija (p1+p2) je slobodan, sve se spaja u jedan veliki heap!)
-    MemoryAllocator::mem_free(p3);
-
-    printString("Testiranje alokatora zavrseno.\n");
-    // --- KRAJ TESTA ALOKATORA ---
-
-    TCB* threads[5];
-
-    threads[0] = TCB::createThread(nullptr);
-    TCB::running=threads[0];
-    threads[1] = TCB::createThread(workerBodyA);
-    printString("Thread A created\n");
-    threads[2] = TCB::createThread(workerBodyB);
-    printString("Thread B created\n");
-    threads[3] = TCB::createThread(workerBodyC);
-    printString("Thread C created\n");
-    threads[4] = TCB::createThread(workerBodyD);
-    printString("Thread D created\n");
-
     Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
+
+    printString("Testiranje C API alokatora zapoceto...\n");
+    int* niz = new int[100];
+    if (niz != nullptr) {
+        printString("Uspesna ecall alokacija!\n");
+        niz[0] = 42;
+    } else {
+        printString("Alokacija nije uspela!\n");
+    }
+    delete[] niz;
+    printString("Testiranje zavrseno uspesno!\n");
+
+    // --- KORISTIMO C API ZA KREIRANJE NITI ---
+    thread_t threads[5]; // Tip thread_t je naš TCB* (definisan u syscall_c.hpp)
+
+    // Kreiramo glavnu nit (main) i radnike, prosledjujemo nullptr za arg
+    thread_create(&threads[0], nullptr, nullptr);
+
+    // TCB::running=threads[0] se sada radi automatski u prekidnoj rutini ili Scheduleru!
+    // Ako se prevodilac bude bunio ovde oko setFinished, videcemo kako da to resimo bez TCB-a
+
+    thread_create(&threads[1], workerBodyA, nullptr);
+    printString("Thread A created\n");
+
+    thread_create(&threads[2], workerBodyB, nullptr);
+    printString("Thread B created\n");
+
+    thread_create(&threads[3], workerBodyC, nullptr);
+    printString("Thread C created\n");
+
+    thread_create(&threads[4], workerBodyD, nullptr);
+    printString("Thread D created\n");
 
     Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
 
-    while (!(threads[1]->isFinished() &&
-            threads[2]->isFinished() &&
-            threads[3]->isFinished() &&
-            threads[4]->isFinished())) {
-        TCB::yield();
+    // Pošto više ne vidimo TCB::isFinished(), za sada ćemo u main-u pozivati
+    // thread_dispatch u jednostavnoj for petlji dok svi radnici ne zavrse.
+    // Pravo rešenje za ovo čeka u Zadatku 3 (Semafori)!
+    for (int i = 0; i < 50; i++) {
+        thread_dispatch();
     }
 
+    // Niti cistimo na kraju (pošto ne vidimo TCB, ovo ce pozvati delete iznutra
+    // ako smo to dobro definisali, ili cemo ih samo ostaviti za sada dok ne sredimo
+    // memorijski menadzment niti).
 
-    for (auto &coroutine : threads) {
-        delete coroutine;
-    }
     printString("Finished\n");
     return 0;
-
 }

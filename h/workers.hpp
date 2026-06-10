@@ -1,12 +1,12 @@
 #ifndef WORKERS_HPP_
 #define WORKERS_HPP_
 
-extern void workerBodyA();
+extern void workerBodyA(void* arg);
 
-extern void workerBodyB();
+extern void workerBodyB(void* arg);
 
-extern void workerBodyC();
+extern void workerBodyC(void* arg);
 
-extern void workerBodyD();
+extern void workerBodyD(void* arg);
 
 #endif

@@ -83,7 +83,7 @@ public:
 
 private:
     //supervisor trap handler
-    static void handleSupervisorTrap();
+    //static void handleSupervisorTrap();
 };
 
 inline uint64 Riscv::r_scause()
