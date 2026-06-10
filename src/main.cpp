@@ -20,7 +20,27 @@ int main() {
     }
     delete[] niz;
     printString("Testiranje zavrseno uspesno!\n");
+    printString("Stres-test memorije zapocet...\n");
 
+    // 1. Pokušavamo da alociramo ogroman komad memorije (npr. 10000 celih brojeva)
+    int* ogroman_niz1 = new int[10000];
+    if (ogroman_niz1 != nullptr) {
+        printString("Prva velika alokacija: USPESNA\n");
+    }
+
+    // 2. Oslobađamo tu memoriju
+    delete[] ogroman_niz1;
+    printString("Memorija oslobodjena.\n");
+
+    // 3. Pokušavamo ponovo da alociramo ISTU toliku kolicinu
+    int* ogroman_niz2 = new int[10000];
+    if (ogroman_niz2 != nullptr) {
+        printString("Druga velika alokacija: USPESNA (Dealokacija radi savrseno!)\n");
+    } else {
+        printString("Druga alokacija: PALA (Greska u mem_free!)\n");
+    }
+
+    delete[] ogroman_niz2;
     // --- KORISTIMO C API ZA KREIRANJE NITI ---
     thread_t threads[5]; // Tip thread_t je naš TCB* (definisan u syscall_c.hpp)
 
@@ -47,7 +67,7 @@ int main() {
     // Pošto više ne vidimo TCB::isFinished(), za sada ćemo u main-u pozivati
     // thread_dispatch u jednostavnoj for petlji dok svi radnici ne zavrse.
     // Pravo rešenje za ovo čeka u Zadatku 3 (Semafori)!
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < 50000; i++) {
         thread_dispatch();
     }
 

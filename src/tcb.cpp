@@ -35,6 +35,9 @@ void TCB::dispatch()
     }
     running = Scheduler::get();
 
+    // DODATA ZAŠTITA: Ako je čekaonica prazna, ne radi ništa!
+    if (running == nullptr) return;
+
     TCB::contextSwitch(&old->context, &running->context);
 }
 

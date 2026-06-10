@@ -43,7 +43,7 @@ int thread_create(thread_t *handle, void (*start_routine)(void *), void *arg)
     // Za sada ćemo proslediti 0 (nullptr) i pustiti kernel (TCB) da ga alocira.
     register uint64 a4 asm ("a4") = 0;
 
-    __asm__ volatile ("ecall" : "+r" (a0):"r"(a1),"r" (a2),"r" (a3), "r" (a4) :"memory");
+    __asm__ volatile ("ecall" : "+r" (a0):"r"(a1),"r" (a2),"r" (a3), "r" (a4) :"memory");//"memory" (Clobber): Ovo je upozorenje. Kažeš prevodiocu: "Ovaj kod će možda čačkati po RAM memoriji. Zato, sve što si keširao, odmah ispiši u RAM i nakon ovog poziva sve ponovo učitaj iz RAM-a."
     return (int)a0;
 }
 

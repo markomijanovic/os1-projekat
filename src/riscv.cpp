@@ -22,9 +22,11 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         volatile uint64 sstatus = Riscv::r_sstatus();
 
         if (a0 == 0x01) {
+            //mem alloc
             retVal = (uint64)MemoryAllocator::mem_alloc((size_t)a1);
         }
         else if (a0 == 0x02) {
+            //mem free
             retVal = (uint64)MemoryAllocator::mem_free((void*)a1);
         }
         else if (a0 == 0x11)
@@ -32,6 +34,12 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
             // thread_create
             TCB** handle = (TCB**)a1;
             *handle = TCB::createThread((TCB::Body)a2, (void*)a3);
+            // --- OVO JE KLJUČNA POPRAVKA ---
+            // Ako je start_routine (a2) nula, to je naša main nit!
+            // Postavljamo je kao trenutno tekuću (running) nit.
+            if (a2 == 0 && TCB::running == nullptr) {
+                TCB::running = *handle;
+            }
             if (*handle != nullptr) {
                 retVal = 0; // Uspeh
             } else {
