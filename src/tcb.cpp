@@ -11,6 +11,9 @@
 //extern "C" void pushRegisters();
 TCB *TCB::running = nullptr;
 
+// Inicijalizacija niza i brojaca
+TCB* TCB::sleepQueue[1000];
+int TCB::sleepCount = 0;
 uint64 TCB::timeSliceCounter = 0;
 
 TCB *TCB::createThread(Body body,void * arg)
@@ -55,4 +58,40 @@ void TCB::threadWrapper()
     }
     // Ažurirano: Umesto ručnog gašenja, sada zovemo naš novi sistemski poziv!
     thread_exit();
+}
+
+int TCB::sleep(time_t ticks)
+{
+    if (ticks == 0) return 0;
+
+    TCB::running->sleepTime = ticks;
+
+    // Ubacujemo nit u niz uspavanih
+    sleepQueue[sleepCount++] = TCB::running;
+
+    // Menjamo kontekst
+    TCB* old = TCB::running;
+    TCB::running = Scheduler::get();
+    if (TCB::running != nullptr) {
+        TCB::contextSwitch(&old->context, &TCB::running->context);
+    }
+    return 0;
+}
+
+void TCB::updateSleepingThreads()
+{
+    for (int i = 0; i < sleepCount; ) {
+        sleepQueue[i]->sleepTime--;
+
+        if (sleepQueue[i]->sleepTime == 0) {
+            // Vreme je isteklo! Vracamo nit u Scheduler
+            Scheduler::put(sleepQueue[i]);
+
+            // Brzo brisanje iz niza: prevucemo poslednji element na ovo mesto
+            sleepQueue[i] = sleepQueue[--sleepCount];
+        } else {
+            // Ako i dalje spava, samo idemo na sledecu nit
+            i++;
+        }
+    }
 }

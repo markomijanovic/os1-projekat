@@ -7,6 +7,7 @@
 #include "scheduler.hpp"
 #include "../lib/hw.h"
 
+typedef unsigned long time_t;
 //thread control block
 class TCB
 {
@@ -39,6 +40,10 @@ public:
 
     static uint64 timeSliceCounter;
 
+    static TCB* sleepQueue[1000]; // Red uspavanih niti
+    static int sleepCount;
+    static int sleep(time_t ticks); // Metoda koju zove ecall
+    static void updateSleepingThreads(); // Metoda koju zove tajmer prekid
 private:
     TCB(Body body,void * arg, uint64 timeSlice) : body(body),arg(arg),
                                        stack(body != nullptr ? new uint64[STACK_SIZE] : nullptr),
@@ -65,13 +70,13 @@ private:
     Context context;
     uint64 timeSlice;
     bool finished;
-
+    time_t sleepTime; // Koliko još tikova nit spava
     friend class Riscv;
+    friend class Semaphore;
 
     static void threadWrapper();
 
     static void contextSwitch(Context *oldContext, Context *runningContext);
-
 
 
     static uint64 constexpr STACK_SIZE = 1024;

@@ -59,3 +59,68 @@ void thread_dispatch()
     register uint64 a0 asm ("a0") = 0x13;
     __asm__ volatile ("ecall":"+r"(a0)::"memory");
 }
+
+int sem_open(sem_t *handle, unsigned int init)
+{
+    register uint64 a0 asm("a0") = 0x21;
+    register uint64 a1 asm ("a1") = (uint64) handle;
+    register uint64 a2 asm ("a2") = (uint64) init;
+    __asm__ volatile ("ecall":"+r" (a0):"r"(a1),"r"(a2):"memory");
+    return (int)a0;
+}
+
+int sem_close(sem_t *handle)
+{
+    register uint64 a0 asm ("a0") = 0x22;
+    register uint64 a1 asm ("a1") = (uint64) handle;
+    __asm__ volatile("ecall":"+r"(a0):"r"(a1):"memory");
+    return (int)a0;
+}
+
+int sem_wait(sem_t id)
+{
+    register uint64 a0 asm ("a0") = 0x23;
+    register uint64 a1 asm ("a1") = (uint64) id;
+    __asm__ volatile ("ecall":"+r" (a0):"r"(a1):"memory");
+    return (int)a0;
+}
+
+int sem_signal(sem_t id)
+{
+    register uint64 a0 asm ("a0") = 0x24;
+    register uint64 a1 asm ("a1") = (uint64) id;
+    __asm__ volatile ("ecall":"+r" (a0):"r"(a1):"memory");
+    return (int)a0;
+}
+
+
+
+int sem_wait_n(sem_t id, unsigned int n)
+{
+    register uint64 a0 asm ("a0") = 0x25;
+    register uint64 a1 asm ("a1") = (uint64) id;
+    register uint64 a2 asm ("a2") = (uint64) n;
+
+    __asm__ volatile("ecall":"+r" (a0):"r"(a1),"r"(a2):"memory");
+    return (int)a0;
+}
+
+int sem_signal_n(sem_t id, unsigned int n)
+{
+    register uint64 a0 asm ("a0") = 0x26;
+    register uint64 a1 asm ("a1") = (uint64) id;
+    register uint64 a2 asm ("a2") = (uint64) n;
+
+    __asm__ volatile("ecall":"+r" (a0):"r"(a1),"r"(a2):"memory");
+    return (int)a0;
+
+}
+
+int time_sleep(time_t ticks)
+{
+    register uint64 a0 asm ("a0") = 0x31;
+    register uint64 a1 asm ("a1") = (uint64) ticks;
+    asm volatile ("ecall":"+r" (a0):"r"(a1):"memory");
+    return (int)a0;
+    
+}

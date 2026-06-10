@@ -2,6 +2,7 @@
 #include "../lib/console.h"
 #include "../h/tcb.hpp"
 #include "../h/MemoryAllocator.hpp" // OBAVEZNO: Uključujemo naš alokator memorije
+#include "../h/semaphore.hpp"
 
 void Riscv::popSppSpie()
 {
@@ -59,12 +60,63 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
         }
+        else if (a0 == 0x21)
+        {
+            //sem_open
+            Semaphore** handle = (Semaphore**)a1;
+            *handle =new Semaphore((unsigned int) a2);
+            if (*handle != nullptr) retVal = 0;
+            else retVal = -1;
+        }
+        else if (a0 == 0x22)
+        {
+            //sem_close
+            Semaphore* handle = (Semaphore*)a1;
+            delete handle;
+            retVal = 0;
+        }
+        else if (a0 == 0x23)
+        {
+            //sem_wait
+            Semaphore* handle = (Semaphore*)a1;
+            if (handle != nullptr) retVal = handle->wait();
+            else retVal = -1;
+        }
+        else if (a0 == 0x24)
+        {
+            //sem_signal
+            Semaphore* handle = (Semaphore*)a1;
+            if (handle != nullptr) retVal = handle->signal();
+            else retVal = -1;
+        }
+        else if (a0==0x25)
+        {
+            //sem_wait_n
+            Semaphore * handle = (Semaphore*) a1;
+            unsigned n=(unsigned)a2;
+            if (handle != nullptr) retVal = handle->wait_n(n);
+            else retVal = -1;
+        }
+        else if (a0 == 0x26)
+        {
+            //sem_signal_n
+            Semaphore* handle = (Semaphore*)a1;
+            unsigned n=(unsigned)a2;
+            if (handle != nullptr) retVal = handle->signal_n(n);
+            else retVal = -1;
+        }
+        else if (a0==0x31)
+        {
+            time_t ticks=(time_t)a1;
+            retVal=TCB::sleep(ticks);
+        }
 
         Riscv::w_sstatus(sstatus);
         Riscv::w_sepc(sepc);
     }
     else if (scause == 0x8000000000000001UL)
     {
+        TCB::updateSleepingThreads();
         Riscv::mc_sip(Riscv::SIP_SSIP); // Prvo cistimo prekid!
         TCB::timeSliceCounter++;
 

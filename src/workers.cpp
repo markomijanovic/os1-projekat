@@ -4,41 +4,32 @@
 #include "../h/workers.hpp"
 #include "../h/print.hpp"
 #include "../h/syscall_c.hpp" // KLJUČNA IZMENA: Uključujemo sistemske pozive za niti
-
-void workerBodyA(void* arg) // KLJUČNA IZMENA: Dodat void* arg
-{
-    for (uint64 i = 0; i < 10; i++)
-    {
+// OVO GOVORI PREVODIOCU: "Ovaj semafor postoji u nekom drugom fajlu (main.cpp), veruj mi!"
+extern sem_t semafor_zavrsetka;
+void workerBodyA(void* arg) {
+    for (uint64 i = 0; i < 10; i++) {
         printString("A: i=");
         printInteger(i);
         printString("\n");
-        for (uint64 j = 0; j < 10000; j++)
-        {
-            for (uint64 k = 0; k < 10000; k++)
-            {
-                // bussy wait
-            }
-            // thread_dispatch(); // Ako želiš da otkomentarišeš, sada ide ovako
-        }
+
+        // Umesto blesavih j,k petlji, nit gospodski ode da spava 5 tikova!
+        time_sleep(5);
     }
+    sem_signal(semafor_zavrsetka);
+    printString("Worker A uspesno poslao signal!\n");
 }
 
-void workerBodyB(void* arg) // KLJUČNA IZMENA: Dodat void* arg
-{
-     for (uint64 i = 0; i < 16; i++)
-    {
+void workerBodyB(void* arg) {
+    for (uint64 i = 0; i < 10; i++) {
         printString("B: i=");
         printInteger(i);
         printString("\n");
-        for (uint64 j = 0; j < 10000; j++)
-        {
-            for (uint64 k = 0; k < 10000; k++)
-            {
-                // bussy wait
-            }
-            // thread_dispatch();
-        }
+
+        // Umesto blesavih j,k petlji, nit gospodski ode da spava 5 tikova!
+        time_sleep(3);
     }
+    sem_signal(semafor_zavrsetka);
+    printString("Worker B uspesno poslao signal!\n");
 }
 
 static uint64 fibbonacci(uint64 n)
@@ -82,6 +73,8 @@ void workerBodyC(void* arg) // KLJUČNA IZMENA: Dodat void* arg
         printInteger(i);
         printString("\n");
     }
+    sem_signal(semafor_zavrsetka);
+    printString("Worker C uspesno poslao signal!\n"); // <--- DODAJ OVO!
 }
 
 void workerBodyD(void* arg) // KLJUČNA IZMENA: Dodat void* arg
@@ -109,4 +102,6 @@ void workerBodyD(void* arg) // KLJUČNA IZMENA: Dodat void* arg
         printInteger(i);
         printString("\n");
     }
+    sem_signal(semafor_zavrsetka);
+    printString("Worker D uspesno poslao signal!\n"); // <--- DODAJ OVO!
 }

@@ -5,8 +5,15 @@
 #include "../h/syscall_c.hpp" // OBAVEZNO: Sada koristimo sistemske pozive za niti!
 
 // NAPOMENA: OBRISALI SMO #include "../h/tcb.hpp" !
+ sem_t semafor_zavrsetka;
 
-int main() {
+void idleBody(void* arg) {
+    while (true) {
+        thread_dispatch(); // Uvek prepuštaj procesor drugima čim stignu!
+    }
+}
+int main()
+{
     MemoryAllocator::initialize_memory();
     Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
 
@@ -41,40 +48,32 @@ int main() {
     }
 
     delete[] ogroman_niz2;
-    // --- KORISTIMO C API ZA KREIRANJE NITI ---
-    thread_t threads[5]; // Tip thread_t je naš TCB* (definisan u syscall_c.hpp)
+    printString("Testiranje zavrseno uspesno!\n");
 
-    // Kreiramo glavnu nit (main) i radnike, prosledjujemo nullptr za arg
-    thread_create(&threads[0], nullptr, nullptr);
+    // 1. OTVORI SEMAFOR
+    sem_open(&semafor_zavrsetka, 0);
 
-    // TCB::running=threads[0] se sada radi automatski u prekidnoj rutini ili Scheduleru!
-    // Ako se prevodilac bude bunio ovde oko setFinished, videcemo kako da to resimo bez TCB-a
+    // Povećaj niz na 6 mesta (main, 4 radnika i idle nit)
+    thread_t threads[6];
 
+    // Kreiranje tvojih standardnih niti
+    thread_create(&threads[0], nullptr, nullptr); // Main nit
     thread_create(&threads[1], workerBodyA, nullptr);
-    printString("Thread A created\n");
-
     thread_create(&threads[2], workerBodyB, nullptr);
-    printString("Thread B created\n");
-
     thread_create(&threads[3], workerBodyC, nullptr);
-    printString("Thread C created\n");
-
     thread_create(&threads[4], workerBodyD, nullptr);
-    printString("Thread D created\n");
 
+    // --- NOVO: Kreiramo IDLE nit! ---
+    thread_create(&threads[5], idleBody, nullptr);
+
+    // PALIMO PREKIDE TAJMERA
     Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
 
-    // Pošto više ne vidimo TCB::isFinished(), za sada ćemo u main-u pozivati
-    // thread_dispatch u jednostavnoj for petlji dok svi radnici ne zavrse.
-    // Pravo rešenje za ovo čeka u Zadatku 3 (Semafori)!
-    for (int i = 0; i < 50000; i++) {
-        thread_dispatch();
-    }
+    // MAIN ČEKA
+    printString("Main nit trazi 4 resursa odjednom (wait_n)...\n");
+    sem_wait_n(semafor_zavrsetka, 4);
 
-    // Niti cistimo na kraju (pošto ne vidimo TCB, ovo ce pozvati delete iznutra
-    // ako smo to dobro definisali, ili cemo ih samo ostaviti za sada dok ne sredimo
-    // memorijski menadzment niti).
-
+    printString("Main nit uspesno sakupila sva 4 signala!\n");
     printString("Finished\n");
     return 0;
 }
