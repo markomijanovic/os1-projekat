@@ -1,10 +1,10 @@
 //
 // Created by student on 10. 6. 2026..
 //
-#include "../h/semaphore.hpp"
+#include "../h/_sem.hpp"
 #include "../h/scheduler.hpp"
 
-Semaphore::~Semaphore() {
+_sem::~_sem() {
     // Ako se semafor gasi, moramo odblokirati sve niti iz reda da ne ostanu zauvek zaglavljene
     while (head) {
         deblock();
@@ -13,11 +13,11 @@ Semaphore::~Semaphore() {
 
 
 // Običan wait i signal su sada samo specijalni slučajevi za n=1 !
-int Semaphore::wait() { return wait_n(1); }
-int Semaphore::signal() { return signal_n(1); }
+int _sem::wait() { return wait_n(1); }
+int _sem::signal() { return signal_n(1); }
 
 
-int Semaphore::wait_n(unsigned int n)
+int _sem::wait_n(unsigned int n)
 {
     if (n==0) return 0;// Ako traži 0 resursa, odmah vraća uspeh
 
@@ -32,7 +32,7 @@ int Semaphore::wait_n(unsigned int n)
     }
 }
 
-int Semaphore::signal_n(unsigned int n)
+int _sem::signal_n(unsigned int n)
 {
     if (n==0) return 0;
     value += n; // Dodajemo nove resurse
@@ -46,7 +46,7 @@ int Semaphore::signal_n(unsigned int n)
     return 0;
 }
 
-void Semaphore::block(unsigned n) {
+void _sem::block(unsigned n) {
     // 1. Trenutnu nit stavljamo u red ovog semafora
     Node* newNode = new Node{TCB::running, n,nullptr};
     if (!head) {
@@ -66,7 +66,7 @@ void Semaphore::block(unsigned n) {
     }
 }
 
-void Semaphore::deblock()
+void _sem::deblock()
 {
     if (!head) return;
     // 1. Skidamo prvu nit sa reda semafora

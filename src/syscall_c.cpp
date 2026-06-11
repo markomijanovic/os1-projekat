@@ -124,3 +124,17 @@ int time_sleep(time_t ticks)
     return (int)a0;
     
 }
+
+char getc()
+{
+    register uint64 a0 asm ("a0") = 0x41;
+    __asm__ volatile ("ecall":"+r" (a0)::"memory");
+    return (char)a0;
+}
+
+void putc(char c)
+{
+    register uint64 a0 asm ("a0") = 0x42;
+    register uint64 a1 asm ("a1") = (uint64) c;
+    __asm__ volatile ("ecall":"+r" (a0):"r"(a1):"memory");
+}

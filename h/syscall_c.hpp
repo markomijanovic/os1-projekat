@@ -22,8 +22,8 @@ int thread_exit();
 void thread_dispatch();
 
 // --- DODAJEMO ZA SEMAFORE ---
-class Semaphore;
-typedef Semaphore* sem_t ;
+class _sem;
+typedef _sem* sem_t ;
 
 int sem_open(sem_t* handle,unsigned int init);
 int sem_close(sem_t handle);
@@ -33,5 +33,9 @@ int sem_wait_n(sem_t id, unsigned int n);
 int sem_signal_n(sem_t id, unsigned int n);
 
 int time_sleep(time_t ticks);
+
+char getc();
+
+void putc(char c);
 
 #endif //PROJECT_BASE_V1_1_SYSCALL_C_HPP

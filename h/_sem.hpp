@@ -6,12 +6,12 @@
 #define PROJECT_BASE_V1_1_SEMAPHORE_HPP
 #include "../h/tcb.hpp"
 
-class Semaphore
+class _sem
 {
 public:
-    Semaphore(unsigned int init = 1):value((int)init),head(nullptr),tail(nullptr){}
+    _sem(unsigned int init = 1):value((int)init),head(nullptr),tail(nullptr){}
 
-    ~Semaphore();
+    ~_sem();
 
     int wait();
     int signal();

@@ -4,18 +4,27 @@
 #include "../h/MemoryAllocator.hpp"
 #include "../h/syscall_c.hpp" // OBAVEZNO: Sada koristimo sistemske pozive za niti!
 
-// NAPOMENA: OBRISALI SMO #include "../h/tcb.hpp" !
- sem_t semafor_zavrsetka;
+#include "../h/_console.hpp"
+
+sem_t semafor_zavrsetka;
 
 void idleBody(void* arg) {
     while (true) {
         thread_dispatch(); // Uvek prepuštaj procesor drugima čim stignu!
     }
 }
+
 int main()
 {
-    MemoryAllocator::initialize_memory();
+    // 3. Postavljamo prekidnu rutinu
     Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
+    // 1. KLJUČNA IZMENA: Memorija se MORA prva inicijalizovati!
+    MemoryAllocator::initialize_memory();
+
+    // 2. TEK SADA možemo da bezbedno zovemo "new" za bafere
+    _console::init();
+
+
 
     printString("Testiranje C API alokatora zapoceto...\n");
     int* niz = new int[100];
@@ -50,21 +59,21 @@ int main()
     delete[] ogroman_niz2;
     printString("Testiranje zavrseno uspesno!\n");
 
-    // 1. OTVORI SEMAFOR
+    // --- KREIRANJE NITI I SINHRONIZACIJE ---
     sem_open(&semafor_zavrsetka, 0);
 
-    // Povećaj niz na 6 mesta (main, 4 radnika i idle nit)
-    thread_t threads[6];
+    // Povećaj niz na 7 mesta (main, 4 radnika, idle nit i konzolna nit)
+    thread_t threads[7];
 
-    // Kreiranje tvojih standardnih niti
     thread_create(&threads[0], nullptr, nullptr); // Main nit
     thread_create(&threads[1], workerBodyA, nullptr);
     thread_create(&threads[2], workerBodyB, nullptr);
     thread_create(&threads[3], workerBodyC, nullptr);
     thread_create(&threads[4], workerBodyD, nullptr);
 
-    // --- NOVO: Kreiramo IDLE nit! ---
+    // Kreiramo sistemske pozadinske niti
     thread_create(&threads[5], idleBody, nullptr);
+    thread_create(&threads[6], _console::tx_thread, nullptr);
 
     // PALIMO PREKIDE TAJMERA
     Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
@@ -75,5 +84,6 @@ int main()
 
     printString("Main nit uspesno sakupila sva 4 signala!\n");
     printString("Finished\n");
+
     return 0;
 }

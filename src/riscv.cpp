@@ -1,8 +1,14 @@
 #include "../h/riscv.hpp"
+
+#include "../h/BoundedBuffer.hpp"
 #include "../lib/console.h"
 #include "../h/tcb.hpp"
 #include "../h/MemoryAllocator.hpp" // OBAVEZNO: Uključujemo naš alokator memorije
-#include "../h/semaphore.hpp"
+#include "../h/_sem.hpp"
+#include "../h/_console.hpp"
+#include "../lib/hw.h"
+
+
 
 void Riscv::popSppSpie()
 {
@@ -21,6 +27,10 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         // VOLATILE je apsolutno KLJUČAN ovde da nas promena konteksta ne bi uništila!
         volatile uint64 sepc = Riscv::r_sepc() + 4;
         volatile uint64 sstatus = Riscv::r_sstatus();
+
+
+        // Gasi SPP bit, osiguravajući da procesor padne u User mod nakon sret
+        sstatus &= ~(1ULL << 8);
 
         if (a0 == 0x01) {
             //mem alloc
@@ -63,36 +73,36 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         else if (a0 == 0x21)
         {
             //sem_open
-            Semaphore** handle = (Semaphore**)a1;
-            *handle =new Semaphore((unsigned int) a2);
+            _sem** handle = (_sem**)a1;
+            *handle =new _sem((unsigned int) a2);
             if (*handle != nullptr) retVal = 0;
             else retVal = -1;
         }
         else if (a0 == 0x22)
         {
             //sem_close
-            Semaphore* handle = (Semaphore*)a1;
+            _sem* handle = (_sem*)a1;
             delete handle;
             retVal = 0;
         }
         else if (a0 == 0x23)
         {
             //sem_wait
-            Semaphore* handle = (Semaphore*)a1;
+            _sem* handle = (_sem*)a1;
             if (handle != nullptr) retVal = handle->wait();
             else retVal = -1;
         }
         else if (a0 == 0x24)
         {
             //sem_signal
-            Semaphore* handle = (Semaphore*)a1;
+            _sem* handle = (_sem*)a1;
             if (handle != nullptr) retVal = handle->signal();
             else retVal = -1;
         }
         else if (a0==0x25)
         {
             //sem_wait_n
-            Semaphore * handle = (Semaphore*) a1;
+            _sem * handle = (_sem*) a1;
             unsigned n=(unsigned)a2;
             if (handle != nullptr) retVal = handle->wait_n(n);
             else retVal = -1;
@@ -100,7 +110,7 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         else if (a0 == 0x26)
         {
             //sem_signal_n
-            Semaphore* handle = (Semaphore*)a1;
+            _sem* handle = (_sem*)a1;
             unsigned n=(unsigned)a2;
             if (handle != nullptr) retVal = handle->signal_n(n);
             else retVal = -1;
@@ -109,6 +119,16 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         {
             time_t ticks=(time_t)a1;
             retVal=TCB::sleep(ticks);
+        }
+        else if (a0 == 0x41)
+        {
+            //getc
+            retVal = (uint64) _console::getc();
+        }
+        else if (a0 == 0x42)
+        {
+            // putc
+            _console::putc((char)a1);
         }
 
         Riscv::w_sstatus(sstatus);
@@ -126,6 +146,9 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
             volatile uint64 sepc = Riscv::r_sepc();
             volatile uint64 sstatus = Riscv::r_sstatus();
 
+            // Gasi SPP bit, osiguravajući pad u User mod čak i kada nas tajmer prekine
+            sstatus &= ~(1ULL << 8);
+
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
 
@@ -135,7 +158,7 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
     }
     else if (scause == 0x8000000000000009UL)
     {
-        console_handler();
+        _console::handler();
     }
 
     return retVal;

@@ -72,7 +72,7 @@ private:
     bool finished;
     time_t sleepTime; // Koliko još tikova nit spava
     friend class Riscv;
-    friend class Semaphore;
+    friend class _sem;
 
     static void threadWrapper();
 
