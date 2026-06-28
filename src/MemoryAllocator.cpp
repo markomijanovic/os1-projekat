@@ -9,7 +9,25 @@ MemoryAllocator::MCB *MemoryAllocator::free = nullptr;
 uint64 MemoryAllocator::heap_start_aligned = 0;
 uint64 MemoryAllocator::heap_end_aligned = 0;
 
+static  uint64 align_up(uint64 addr)
+{
+    uint64 remainder = addr % MEM_BLOCK_SIZE;
+    if (remainder == 0)
+    {
+        return  addr;
+    }
+    return  addr + (MEM_BLOCK_SIZE- remainder);
+}
 
+static uint64 align_down(uint64 addr)
+{
+    return  addr - (addr % MEM_BLOCK_SIZE);
+}
+
+static bool is_aligned(uint64 addr)
+{
+    return  addr % MEM_BLOCK_SIZE == 0;
+}
 int MemoryAllocator::size_to_blocks(size_t size)
 {
     size_t blocks = size / MEM_BLOCK_SIZE;
@@ -23,9 +41,14 @@ int MemoryAllocator::size_to_blocks(size_t size)
 void MemoryAllocator::initialize_memory()
 {
     // 1. Poravnanje početne i krajnje adrese na cele blokove
-    heap_start_aligned = (uint64) HEAP_START_ADDR - ((uint64) HEAP_START_ADDR % MEM_BLOCK_SIZE) + MEM_BLOCK_SIZE;
-    heap_end_aligned = (uint64) HEAP_END_ADDR - ((uint64) HEAP_END_ADDR % MEM_BLOCK_SIZE);
+    heap_start_aligned = align_up((uint64) HEAP_START_ADDR);
+    heap_end_aligned = align_down((uint64) HEAP_END_ADDR);
 
+    if (heap_end_aligned <= heap_start_aligned)
+    {
+        free = nullptr;
+        return;
+    }
 
     // 2. Postavljamo glavu liste slobodnih (free) na sam početak poravnatog heap-a
     free = (MCB *) heap_start_aligned;
@@ -41,6 +64,10 @@ void MemoryAllocator::initialize_memory()
 
 void *MemoryAllocator::mem_alloc(size_t size)
 {
+    if (size == 0)
+    {
+        return nullptr;
+    }
     //Dodajemo blok na trazenu velicinu za nase zaglavlje
     size++;
 
@@ -169,15 +196,44 @@ MemoryAllocator::MCB *MemoryAllocator::freeMCBs_join(MCB *left, MCB *right)
 
 int MemoryAllocator::mem_free(void *ptr)
 {
-    if (ptr==nullptr || !((uint64)ptr>=heap_start_aligned && (uint64)ptr<heap_end_aligned))
+    if (ptr == nullptr)
     {
         return -1;
     }
-    //Vracamo se na MCB zaglavlje bloka kojeg brisemo
-    MCB* to_delete = (MCB*)((uint64)ptr - MEM_BLOCK_SIZE);
 
-    if (to_delete->isFree) return -1;//ako neko pokusa osloboditi vec slobodan prostor vracamo gersku
+    uint64 addr = (uint64) ptr;
 
+    if (addr < heap_start_aligned + MEM_BLOCK_SIZE || addr >= heap_end_aligned)
+    {
+        return -1;
+    }
+
+    if (!is_aligned(addr))
+    {
+        return -1;
+    }
+
+    MCB* to_delete = (MCB*)(addr - MEM_BLOCK_SIZE);
+
+    if ((uint64)to_delete < heap_start_aligned || (uint64)to_delete >= heap_end_aligned)
+    {
+        return -1;
+    }
+
+    if (to_delete->isFree)
+    {
+        return -1;
+    }
+
+    if (to_delete->size == 0)
+    {
+        return -1;
+    }
+
+    if ((uint64)to_delete + to_delete->size * MEM_BLOCK_SIZE > heap_end_aligned)
+    {
+        return -1;
+    }
 
     // Prilazimo fizičkom levom i fizičkom desnom bloku
     MCB* left = to_delete->left;

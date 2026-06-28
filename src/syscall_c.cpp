@@ -69,7 +69,7 @@ int sem_open(sem_t *handle, unsigned int init)
     return (int)a0;
 }
 
-int sem_close(sem_t *handle)
+int sem_close(sem_t handle)
 {
     register uint64 a0 asm ("a0") = 0x22;
     register uint64 a1 asm ("a1") = (uint64) handle;

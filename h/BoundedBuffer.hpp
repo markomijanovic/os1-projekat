@@ -13,12 +13,14 @@ public:
     ~BoundedBuffer();
 
     void put(char c);
+    bool tryPut(char c);
     char get();
 private:
     static const int CAPACITY = 256;
     char buffer[CAPACITY];
     int head;
     int tail;
+    int count;
 
     _sem * spaceAvailable;
     _sem * itemAvailable;

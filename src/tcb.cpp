@@ -10,15 +10,16 @@
 
 //extern "C" void pushRegisters();
 TCB *TCB::running = nullptr;
+TCB *TCB::zombie = nullptr;
 
 // Inicijalizacija niza i brojaca
 TCB* TCB::sleepQueue[1000];
 int TCB::sleepCount = 0;
 uint64 TCB::timeSliceCounter = 0;
 
-TCB *TCB::createThread(Body body,void * arg)
+TCB *TCB::createThread(Body body,void * arg, bool kernelThread)
 {
-    return new TCB(body,arg, TIME_SLICE);
+    return new TCB(body,arg, TIME_SLICE, kernelThread);
 }
 
 void TCB::yield()
@@ -31,25 +32,47 @@ void TCB::yield()
 
 void TCB::dispatch()
 {
-    TCB *old = running;
-    if (!old->isFinished())
+    if (zombie != nullptr)
     {
+        delete zombie;
+        zombie = nullptr;
+    }
+
+    TCB *old = running;
+
+    if (old !=nullptr && old->getState()== RUNNING)
+    {
+        old->setState(READY);
         Scheduler::put(old);
     }
+    else if ( old != nullptr && old->getState()== FINISHED)
+    {
+        zombie = old;
+    }
+
     running = Scheduler::get();
 
     // DODATA ZAŠTITA: Ako je čekaonica prazna, ne radi ništa!
     if (running == nullptr) return;
 
-    TCB::contextSwitch(&old->context, &running->context);
+    running->setState(RUNNING);
+
+    if (old != nullptr)
+    {
+        TCB::contextSwitch(&old->context, &running->context);
+    }
 }
 
 void TCB::threadWrapper()
 {
-    // OBRISANO: Riscv::popSppSpie(); jer 'sret' pravi haos sa privilegijama!
-
-    // Umesto toga, samo ručno palimo prekide za novu nit:
-    Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
+    if (running->isKernelThread())
+    {
+        Riscv::ms_sstatus(Riscv::SSTATUS_SIE);
+    }
+    else
+    {
+        Riscv::popSppSpie();
+    }
 
     if (running->body)
     {
@@ -64,7 +87,13 @@ int TCB::sleep(time_t ticks)
 {
     if (ticks == 0) return 0;
 
+    if (TCB::running == nullptr)
+    {
+        return -1;
+    }
+
     TCB::running->sleepTime = ticks;
+    TCB::running->setState(SLEEPING);
 
     // Ubacujemo nit u niz uspavanih
     sleepQueue[sleepCount++] = TCB::running;
@@ -73,6 +102,7 @@ int TCB::sleep(time_t ticks)
     TCB* old = TCB::running;
     TCB::running = Scheduler::get();
     if (TCB::running != nullptr) {
+        TCB::running->setState(RUNNING);
         TCB::contextSwitch(&old->context, &TCB::running->context);
     }
     return 0;
@@ -85,6 +115,7 @@ void TCB::updateSleepingThreads()
 
         if (sleepQueue[i]->sleepTime == 0) {
             // Vreme je isteklo! Vracamo nit u Scheduler
+            sleepQueue[i]->setState(READY);
             Scheduler::put(sleepQueue[i]);
 
             // Brzo brisanje iz niza: prevucemo poslednji element na ovo mesto

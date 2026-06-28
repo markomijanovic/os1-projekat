@@ -8,12 +8,36 @@
 #include "../h/_console.hpp"
 #include "../lib/hw.h"
 
-
-
-void Riscv::popSppSpie()
+static void debugPrintString(const char* string)
 {
-    __asm__ volatile ("csrw sepc, ra");
-    __asm__ volatile ("sret");
+    while (*string != '\0')
+    {
+        __putc(*string++);
+    }
+}
+
+static void debugPrintHex(uint64 value)
+{
+    static const char digits[] = "0123456789abcdef";
+    debugPrintString("0x");
+    for (int i = 15; i >= 0; i--)
+    {
+        __putc(digits[(value >> (i * 4)) & 0xFUL]);
+    }
+}
+
+
+
+__attribute__((naked)) void Riscv::popSppSpie()
+{
+    __asm__ volatile (
+        "li t0, 256\n"
+        "csrc sstatus, t0\n"
+        "li t0, 32\n"
+        "csrs sstatus, t0\n"
+        "csrw sepc, ra\n"
+        "sret\n"
+    );
 }
 
 // Funkcija sada stoji SAMA (nije Riscv::), uzima parametre i vraca vrednost
@@ -24,13 +48,12 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
 
     if (scause == 0x0000000000000009UL || scause == 0x0000000000000008UL)
     {
+        retVal = (uint64)-1;
+
         // VOLATILE je apsolutno KLJUČAN ovde da nas promena konteksta ne bi uništila!
         volatile uint64 sepc = Riscv::r_sepc() + 4;
         volatile uint64 sstatus = Riscv::r_sstatus();
 
-
-        // Gasi SPP bit, osiguravajući da procesor padne u User mod nakon sret
-        sstatus &= ~(1ULL << 8);
 
         if (a0 == 0x01) {
             //mem alloc
@@ -44,46 +67,69 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
         {
             // thread_create
             TCB** handle = (TCB**)a1;
-            *handle = TCB::createThread((TCB::Body)a2, (void*)a3);
-            // --- OVO JE KLJUČNA POPRAVKA ---
-            // Ako je start_routine (a2) nula, to je naša main nit!
-            // Postavljamo je kao trenutno tekuću (running) nit.
-            if (a2 == 0 && TCB::running == nullptr) {
-                TCB::running = *handle;
+
+            if (handle == nullptr)
+            {
+                retVal = (uint64)-1;
             }
-            if (*handle != nullptr) {
-                retVal = 0; // Uspeh
-            } else {
-                retVal = -1; // Greška
+            else
+            {
+                *handle = TCB::createThread((TCB::Body)a2, (void*)a3);
+
+                //ako je main
+                if (a2 == 0 && TCB::running == nullptr) {
+                    TCB::running = *handle;
+                }
+
+                retVal = (*handle != nullptr) ? 0 : (uint64)-1;
             }
         }
         else if (a0 == 0x12)
         {
             // thread_exit
-            TCB::running->setFinished(true);
-            TCB::timeSliceCounter = 0;
-            TCB::dispatch();
+            if (TCB::running != nullptr)
+            {
+                TCB::running->setFinished(true);
+                TCB::timeSliceCounter = 0;
+                TCB::dispatch();
+                retVal = 0;
+            }
         }
         else if (a0 == 0x13)
         {
             // thread_dispatch
-            TCB::timeSliceCounter = 0;
-            TCB::dispatch();
+            if (TCB::running != nullptr)
+            {
+                TCB::timeSliceCounter = 0;
+                TCB::dispatch();
+            }
+            retVal = 0;
         }
         else if (a0 == 0x21)
         {
             //sem_open
             _sem** handle = (_sem**)a1;
-            *handle =new _sem((unsigned int) a2);
-            if (*handle != nullptr) retVal = 0;
-            else retVal = -1;
+
+            if (handle == nullptr)
+            {
+                retVal = (uint64)-1;
+            }
+            else
+            {
+                *handle =new _sem((unsigned int) a2);
+                retVal = (*handle != nullptr)? 0 : (uint64)-1;
+            }
+
         }
         else if (a0 == 0x22)
         {
             //sem_close
             _sem* handle = (_sem*)a1;
-            delete handle;
-            retVal = 0;
+            if (handle != nullptr)
+            {
+                delete handle;
+                retVal = 0;
+            }
         }
         else if (a0 == 0x23)
         {
@@ -138,6 +184,11 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
     {
         TCB::updateSleepingThreads();
         Riscv::mc_sip(Riscv::SIP_SSIP); // Prvo cistimo prekid!
+
+        if (TCB::running == nullptr)
+        {
+            return retVal;
+        }
         TCB::timeSliceCounter++;
 
         if (TCB::timeSliceCounter >= TCB::running->getTimeSlice())
@@ -145,9 +196,6 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
             // VOLATILE je apsolutno KLJUČAN i ovde!
             volatile uint64 sepc = Riscv::r_sepc();
             volatile uint64 sstatus = Riscv::r_sstatus();
-
-            // Gasi SPP bit, osiguravajući pad u User mod čak i kada nas tajmer prekine
-            sstatus &= ~(1ULL << 8);
 
             TCB::timeSliceCounter = 0;
             TCB::dispatch();
@@ -159,6 +207,17 @@ extern "C" uint64 handleSupervisorTrap(uint64 a0, uint64 a1, uint64 a2, uint64 a
     else if (scause == 0x8000000000000009UL)
     {
         _console::handler();
+    }
+    else
+    {
+        debugPrintString("\nUnexpected trap: scause=");
+        debugPrintHex(scause);
+        debugPrintString(" sepc=");
+        debugPrintHex(Riscv::r_sepc());
+        debugPrintString(" stval=");
+        debugPrintHex(Riscv::r_stval());
+        debugPrintString("\n");
+        while (true) {}
     }
 
     return retVal;

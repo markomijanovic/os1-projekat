@@ -7,7 +7,7 @@
 _sem::~_sem() {
     // Ako se semafor gasi, moramo odblokirati sve niti iz reda da ne ostanu zauvek zaglavljene
     while (head) {
-        deblock();
+        deblock(-1);
     }
 }
 
@@ -27,8 +27,7 @@ int _sem::wait_n(unsigned int n)
         return 0;// Ima dovoljno resursa, proleti dalje
     }else
     {
-        block(n);// Nemamo dovoljno, nit se blokira i pamti "n"
-        return 0;
+        return block(n);// Nemamo dovoljno, nit se blokira i pamti "n"
     }
 }
 
@@ -41,32 +40,52 @@ int _sem::signal_n(unsigned int n)
     while (head != nullptr && value>=head->requested)
     {
         value-=head->requested;// Unapred joj oduzimamo resurse
-        deblock();// Budimo je!
+        deblock(0);// Budimo je uspesno
     }
     return 0;
 }
 
-void _sem::block(unsigned n) {
+int _sem::block(unsigned n)
+{
+    TCB* old = TCB::running;
+
+    if (old == nullptr)
+    {
+        return -1;
+    }
+
     // 1. Trenutnu nit stavljamo u red ovog semafora
-    Node* newNode = new Node{TCB::running, n,nullptr};
+    Node* newNode = new Node{old, n,nullptr};
+    if (newNode == nullptr)
+    {
+        return -1;
+    }
+    TCB* next=Scheduler::get();
+    if (next == nullptr)
+    {
+        delete newNode;
+        return -1;
+    }
     if (!head) {
         head = newNode;
     } else {
         tail->next = newNode;
     }
+
     tail = newNode;
 
-    // 2. Ručno prebacujemo kontekst BEZ vracanja u Scheduler
-    TCB* old = TCB::running;
-    TCB::running = Scheduler::get();
+    old->setSemaphoreStatus(0);
+    old->setState(TCB::BLOCKED);
 
-    // Zastita od nule (ako nema vise niti za rad)
-    if (TCB::running != nullptr) {
-        TCB::contextSwitch(&old->context, &TCB::running->context);
-    }
+    TCB::running=next;
+    TCB::running->setState(TCB::RUNNING);
+
+    TCB::contextSwitch(&old->context, &TCB::running->context);
+
+    return old->getSemaphoreStatus();
 }
 
-void _sem::deblock()
+void _sem::deblock(int status)
 {
     if (!head) return;
     // 1. Skidamo prvu nit sa reda semafora
@@ -74,7 +93,13 @@ void _sem::deblock()
     head = head->next;
     if (!head) tail = nullptr;
 
-    // 2. Vraćamo je nazad u Scheduler da nastavi sa radom
-    Scheduler::put(temp->thread);
+    if (temp->thread != nullptr)
+    {
+        // 2. Vraćamo je nazad u Scheduler da nastavi sa radom
+        temp->thread->setSemaphoreStatus(status);
+        temp->thread->setState(TCB::READY);
+        Scheduler::put(temp->thread);
+    }
+
     delete temp;
 }

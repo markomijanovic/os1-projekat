@@ -6,8 +6,7 @@
 #include "../h/riscv.hpp"
 #include "../lib/console.h"
 
-void printString(const char *string)
-{
+__attribute__((weak)) void printString(const char *string){ // ovaj atribut daje prednost profinoj funkciji i ne baca linkersku gresku
     uint64 sstatus=Riscv::r_sstatus();
     Riscv::mc_sstatus(Riscv::SSTATUS_SIE);
     while (*string != '\0')

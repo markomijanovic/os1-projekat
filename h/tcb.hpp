@@ -17,6 +17,16 @@ public:
         delete[] stack;
     }
 
+    enum State
+    {
+        CREATED,
+        READY,
+        RUNNING,
+        BLOCKED,
+        SLEEPING,
+        FINISHED
+    };
+
     bool isFinished() const
     {
         return finished;
@@ -25,16 +35,43 @@ public:
     void setFinished(bool f)
     {
         finished = f;
+        if (f)
+        {
+            state = FINISHED;
+        }
+    }
+
+    State getState() const
+    {
+        return state;
+    }
+
+    void setState(State s)
+    {
+        state=s;
+    }
+
+    int getSemaphoreStatus() const
+    {
+        return semaphoreStatus;
+    }
+
+    void setSemaphoreStatus(int status)
+    {
+        semaphoreStatus = status;
     }
 
     uint64 getTimeSlice() const  { return timeSlice; }
     using Body = void (*)(void *);
 
-    static TCB *createThread(Body body, void * arg);
+
+
+    static TCB *createThread(Body body, void * arg, bool kernelThread = false);
 
     static void yield();
 
     static TCB *running;
+    static TCB * zombie;
 
     static void dispatch();
 
@@ -45,12 +82,20 @@ public:
     static int sleep(time_t ticks); // Metoda koju zove ecall
     static void updateSleepingThreads(); // Metoda koju zove tajmer prekid
 private:
-    TCB(Body body,void * arg, uint64 timeSlice) : body(body),arg(arg),
+    bool isKernelThread() const
+    {
+        return kernelThread;
+    }
+
+    TCB(Body body,void * arg, uint64 timeSlice, bool kernelThread) : body(body),arg(arg),
                                        stack(body != nullptr ? new uint64[STACK_SIZE] : nullptr),
                                        context({(uint64) &threadWrapper,
                                            stack != nullptr ? (uint64) &stack[STACK_SIZE] : 0}),
                                        timeSlice(timeSlice),
-                                       finished(false)
+                                       finished(false),
+                                        state(body!=nullptr?READY:RUNNING),// main tcb trik!
+                                        semaphoreStatus(0),
+                                        kernelThread(kernelThread)
     {
         if (body != nullptr)
         {
@@ -62,6 +107,18 @@ private:
     {
         uint64 ra;
         uint64 sp;
+        uint64 s0;
+        uint64 s1;
+        uint64 s2;
+        uint64 s3;
+        uint64 s4;
+        uint64 s5;
+        uint64 s6;
+        uint64 s7;
+        uint64 s8;
+        uint64 s9;
+        uint64 s10;
+        uint64 s11;
     };
 
     Body body;
@@ -70,6 +127,11 @@ private:
     Context context;
     uint64 timeSlice;
     bool finished;
+
+    State state;
+    int semaphoreStatus;
+    bool kernelThread;
+
     time_t sleepTime; // Koliko još tikova nit spava
     friend class Riscv;
     friend class _sem;

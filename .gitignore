@@ -1,8 +1,10 @@
 # Kompajlirani fajlovi i folderi
 build/
+build-*/
 kernel
 kernel.asm
 .gdbinit
+src/*.s
 
 # Razno đubre
 *.o

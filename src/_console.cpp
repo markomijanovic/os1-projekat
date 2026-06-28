@@ -39,7 +39,7 @@ void _console::handler()
         // Ako je neko kliknuo tastaturu, kupimo znakove i stavljamo u rx bafer
         while (*((volatile char*)CONSOLE_STATUS)& CONSOLE_RX_STATUS_BIT)
         {
-            rx_buffer->put(*((volatile char*)CONSOLE_RX_DATA));
+            rx_buffer->tryPut(*((volatile char*)CONSOLE_RX_DATA));
         }
     }
     plic_complete(irq);
@@ -53,7 +53,7 @@ void _console::tx_thread(void *arg)
         char c=tx_buffer->get();// Spava dok nema slova u baferu
 
         // Ceka da hardver bude spreman, usput prepustajuci procesor (NEMA BLOKADE KERNELA)
-        while (*((volatile char*)CONSOLE_STATUS)& CONSOLE_TX_STATUS_BIT)
+        while (!(*((volatile char*)CONSOLE_STATUS) & CONSOLE_TX_STATUS_BIT))
         {
             thread_dispatch();
         }

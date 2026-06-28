@@ -1,20 +1,20 @@
 #include "../h/syscall_cpp.hpp"
-
+#include  "../h/MemoryAllocator.hpp"
 // --- OPERATORI ZA MEMORIJU ---
 void *operator new(size_t n) {
-    return mem_alloc(n);
+    return MemoryAllocator::mem_alloc(MemoryAllocator::size_to_blocks(n));
 }
 
 void *operator new[](size_t n) {
-    return mem_alloc(n);
+    return MemoryAllocator::mem_alloc(MemoryAllocator::size_to_blocks(n));
 }
 
 void operator delete(void *p) noexcept {
-    mem_free(p);
+    MemoryAllocator::mem_free(p);
 }
 
 void operator delete[](void *p) noexcept {
-    mem_free(p);
+    MemoryAllocator::mem_free(p);
 }
 
 // --- KLASA THREAD ---

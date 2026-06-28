@@ -68,6 +68,12 @@ CXXFLAGS += $(shell ${CXX} -fno-stack-protector -E -x c /dev/null >/dev/null 2>&
 CXXFLAGS += ${DEBUG_FLAG}
 CXXFLAGS += -MMD -MP -MF"${@:%.o=%.d}"
 
+
+#ovo je dodato za profine testove samo
+CFLAGS += -I./${DIR_LIBS} -I./${DIR_INC} -I./test
+CXXFLAGS += -I./${DIR_LIBS} -I./${DIR_INC} -I./test
+#------------------------------------------------
+
 LDSCRIPT = kernel.ld
 LDFLAGS  = -z max-page-size=4096 --script ${LDSCRIPT}
 LDLIBS   = --library-path . $(patsubst %,--library=:%,${LIBS})
@@ -100,9 +106,9 @@ ${DIR_BUILD}/%.o: %.c Makefile | ${DIR_BUILD}
 	@mkdir -p $(dir ${@})
 	${CC} -c ${CFLAGS} -Wa,-a,-ad,-alms=${DIR_BUILD}/${<:.c=.lst} -o ${@} ${<}
 
-${DIR_BUILD}/%.o: %.s Makefile | ${DIR_BUILD}
+${DIR_BUILD}/%.o: %.S Makefile | ${DIR_BUILD}
 	@mkdir -p $(dir ${@})
-	${AS} -c ${ASFLAGS} -o ${@} ${<}
+	${CC} -c ${CFLAGS} -Wa,-a,-ad,-alms=${DIR_BUILD}/${<:.S=.lst} -o ${@} ${<}
 
 ${DIR_BUILD}:
 	mkdir ${@}

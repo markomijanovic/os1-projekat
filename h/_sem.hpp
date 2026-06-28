@@ -32,8 +32,8 @@ private:
     Node* head;
     Node* tail;
 
-    void block(unsigned n);
-    void deblock();
+    int block(unsigned n);
+    void deblock(int status = 0);
 };
 
 #endif //PROJECT_BASE_V1_1_SEMAPHORE_HPP

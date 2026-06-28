@@ -8,6 +8,7 @@ BoundedBuffer::BoundedBuffer()
 {
     head=0;
     tail=0;
+    count=0;
 
     spaceAvailable = new _sem(CAPACITY);
     itemAvailable = new _sem(0);
@@ -28,9 +29,24 @@ void BoundedBuffer::put(char c)
 
     buffer[tail] = c;
     tail= (tail+1)%CAPACITY;
+    count++;
 
     mutex->signal();
     itemAvailable->signal();
+}
+
+bool BoundedBuffer::tryPut(char c)
+{
+    if (count>=CAPACITY)
+    {
+        return false;
+    }
+    buffer[tail]=c;
+    tail=(tail+1)%CAPACITY;
+    count++;
+
+    itemAvailable->signal();
+    return true;
 }
 
 char BoundedBuffer::get()
@@ -40,8 +56,9 @@ char BoundedBuffer::get()
 
     char c = buffer[head];
     head = (head+1)%CAPACITY;
+    count--;
 
     mutex->signal();
-    itemAvailable->signal();
+    spaceAvailable->signal();
     return c;
 }

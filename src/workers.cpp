@@ -46,7 +46,7 @@ void workerBodyC(void* arg) // KLJUČNA IZMENA: Dodat void* arg
     uint8 i = 0;
     for (; i < 3; i++)
     {
-        printString("A: i=");
+        printString("C: i=");
         printInteger(i);
         printString("\n");
     }
@@ -58,18 +58,18 @@ void workerBodyC(void* arg) // KLJUČNA IZMENA: Dodat void* arg
 
     uint64 t1 = 0;
     __asm__ ("mv %[t1], t1":[t1]"=r"(t1));
-    printString("A: t1=");
+    printString("C: t1=");
     printInteger(t1);
     printString("\n");
 
     uint64 result = fibbonacci(20);
-    printString("A: fibbonacci=");
+    printString("C: fibbonacci=");
     printInteger(result);
     printString("\n");
 
     for (; i < 6; i++)
     {
-        printString("A: i=");
+        printString("C: i=");
         printInteger(i);
         printString("\n");
     }
@@ -86,7 +86,7 @@ void workerBodyD(void* arg) // KLJUČNA IZMENA: Dodat void* arg
         printInteger(i);
         printString("\n");
     }
-    printString("B: yield\n");
+    printString("D: yield\n");
     __asm__ ("li t1,5");
 
     thread_dispatch(); // KLJUČNA IZMENA: Zamenjen TCB::yield()
@@ -98,7 +98,7 @@ void workerBodyD(void* arg) // KLJUČNA IZMENA: Dodat void* arg
 
     for (; i < 16; i++)
     {
-        printString("B: i=");
+        printString("D: i=");
         printInteger(i);
         printString("\n");
     }
