@@ -15,6 +15,7 @@ public:
     void put(char c);
     bool tryPut(char c);
     char get();
+    bool isEmpty() const;
 private:
     static const int CAPACITY = 256;
     char buffer[CAPACITY];

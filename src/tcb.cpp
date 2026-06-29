@@ -13,7 +13,7 @@ TCB *TCB::running = nullptr;
 TCB *TCB::zombie = nullptr;
 
 // Inicijalizacija niza i brojaca
-TCB* TCB::sleepQueue[1000];
+TCB* TCB::sleepQueue[TCB::MAX_SLEEPING_THREADS];
 int TCB::sleepCount = 0;
 uint64 TCB::timeSliceCounter = 0;
 
@@ -88,6 +88,11 @@ int TCB::sleep(time_t ticks)
     if (ticks == 0) return 0;
 
     if (TCB::running == nullptr)
+    {
+        return -1;
+    }
+
+    if (sleepCount >= MAX_SLEEPING_THREADS)
     {
         return -1;
     }

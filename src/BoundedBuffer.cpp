@@ -62,3 +62,8 @@ char BoundedBuffer::get()
     spaceAvailable->signal();
     return c;
 }
+
+bool BoundedBuffer::isEmpty() const
+{
+    return count == 0;
+}

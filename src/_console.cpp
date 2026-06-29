@@ -29,6 +29,15 @@ char _console::getc()
     return rx_buffer->get();
 }
 
+void _console::flush()
+{
+    while (!tx_buffer->isEmpty() ||
+           !(*((volatile char*)CONSOLE_STATUS) & CONSOLE_TX_STATUS_BIT))
+    {
+        thread_dispatch();
+    }
+}
+
 //Poziva se iz PLIC hardverskog prekida
 void _console::handler()
 {

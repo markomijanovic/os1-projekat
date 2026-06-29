@@ -77,7 +77,8 @@ public:
 
     static uint64 timeSliceCounter;
 
-    static TCB* sleepQueue[1000]; // Red uspavanih niti
+    static constexpr int MAX_SLEEPING_THREADS = 1000;
+    static TCB* sleepQueue[MAX_SLEEPING_THREADS]; // Red uspavanih niti
     static int sleepCount;
     static int sleep(time_t ticks); // Metoda koju zove ecall
     static void updateSleepingThreads(); // Metoda koju zove tajmer prekid

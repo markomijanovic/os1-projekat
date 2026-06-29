@@ -37,8 +37,7 @@ int Thread::start() {
     return thread_create(&myHandle, wrapper, this);
 }
 
-void Thread::join() {
-}
+//void Thread::join() {}
 
 void Thread::dispatch() {
     thread_dispatch();
@@ -57,7 +56,10 @@ Semaphore::Semaphore(unsigned init) {
 }
 
 Semaphore::~Semaphore() {
-    // Prazno, pošto u kernelu nemamo sem_close
+    if (myHandle) {
+        sem_close(myHandle);
+        myHandle = nullptr;
+    }
 }
 
 int Semaphore::wait() {

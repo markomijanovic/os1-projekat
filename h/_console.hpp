@@ -13,6 +13,7 @@ public:
     static void init();
     static void putc(char c);
     static char getc();
+    static void flush();
     static void handler();// Poziva se iz prekida (scause 9)
     static void tx_thread(void * arg);// Ovo je ona profina "Posebna nit jezgra"
 
