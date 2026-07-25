@@ -54,6 +54,7 @@ void MemoryAllocator::initialize_memory()
     free = (MCB *) heap_start_aligned;
 
     //Inicijalizujemo zaglavlje ovog slobodnog MCB prvog ogromnog
+    free->magic = MCB_MAGIC;
     free->isFree = true;
     free->left = 0;
     free->next = 0;
@@ -101,17 +102,16 @@ void *MemoryAllocator::mem_alloc(size_t size)
 
         new_free_block->next= allocated->next;
         new_free_block->prev = allocated->prev;
+        new_free_block->magic = MCB_MAGIC;
         new_free_block->size = allocated->size-size;
         new_free_block->left = allocated;
         new_free_block->isFree = true;
 
 
-        // --- DODATO: Moramo obavestiti desnog komšiju o novom levom bloku! ---
         MCB* right_neighbor = (MCB *) ((uint64)new_free_block + new_free_block->size * MEM_BLOCK_SIZE);
         if ((uint64)right_neighbor < heap_end_aligned && (uint64)right_neighbor >= heap_start_aligned) {
             right_neighbor->left = new_free_block;
         }
-        // ----------------------------------------------------------------------
 
         if (new_free_block->prev)
         {
@@ -143,6 +143,7 @@ void *MemoryAllocator::mem_alloc(size_t size)
     //Zakljucavanje alociranog bloka
     allocated->next=0;
     allocated->prev=0;
+    allocated->magic = MCB_MAGIC;
     allocated->size=size;
     allocated->isFree=false;
 
@@ -165,7 +166,6 @@ MemoryAllocator::MCB *MemoryAllocator::freeMCBs_join(MCB *left, MCB *right)
     // 2. Ažuriramo blok koji se nalazi fizički odmah iza desnog bloka
     MCB* rightright = (MCB*)((uint64)right+right->size*MEM_BLOCK_SIZE);
 
-    // --- ISPRAVLJENO ---
     if ((uint64)rightright >= heap_end_aligned || (uint64)rightright < heap_start_aligned)
     {
         rightright = nullptr;
@@ -220,6 +220,11 @@ int MemoryAllocator::mem_free(void *ptr)
         return -1;
     }
 
+    if (to_delete->magic != MCB_MAGIC)
+    {
+        return -1;
+    }
+
     if (to_delete->isFree)
     {
         return -1;
@@ -239,13 +244,10 @@ int MemoryAllocator::mem_free(void *ptr)
     MCB* left = to_delete->left;
     MCB* right= (MCB*)((uint64)to_delete+ to_delete->size*MEM_BLOCK_SIZE);
 
-    // --- ISPRAVLJENO: Ovako se pravilno proverava da li je blok van heap-a! ---
     if ((uint64)right >= heap_end_aligned || (uint64)right < heap_start_aligned)
     {
         right = nullptr;
     }
-
-    // --- POKUŠAJ SPAJANJA (MERGING) ---
 
     // Slucaj 1: I levi i desni blok su već slobodni. Guraćemo sve u levi blok.
     if (left && right && left->isFree && right->isFree)
@@ -303,4 +305,3 @@ int MemoryAllocator::mem_free(void *ptr)
 
     return 0; // Uspeh
 }
-

@@ -8,12 +8,9 @@
 #include "../lib/hw.h"
 
 
-// --- DODAJEMO ZA MEMORIJU ---
 void * mem_alloc(size_t size);
 int mem_free(void * p);
 
-
-// --- DODAJEMO ZA NITI ---
 class TCB;
 typedef TCB* thread_t ;
 
@@ -21,7 +18,6 @@ int thread_create(thread_t* handle,void(*start_routine)(void*),void* arg);
 int thread_exit();
 void thread_dispatch();
 
-// --- DODAJEMO ZA SEMAFORE ---
 class _sem;
 typedef _sem* sem_t ;
 

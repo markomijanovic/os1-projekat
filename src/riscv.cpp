@@ -3,7 +3,7 @@
 #include "../h/BoundedBuffer.hpp"
 #include "../lib/console.h"
 #include "../h/tcb.hpp"
-#include "../h/MemoryAllocator.hpp" // OBAVEZNO: Uključujemo naš alokator memorije
+#include "../h/MemoryAllocator.hpp"
 #include "../h/_sem.hpp"
 #include "../h/_console.hpp"
 #include "../lib/hw.h"

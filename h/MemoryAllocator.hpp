@@ -28,12 +28,15 @@ private:
     //Memory control block
     struct MCB
     {
+        uint64 magic;
         uint64 size; // Veličina ovog bloka izražena u blokovima (uključuje i samo zaglavlje)
         MCB *next;
         MCB *prev;
         bool isFree;
         MCB *left; // Pokazivač na FIZIČKI PRETHODNI segment u memoriji (nevezano da li je slobodan)
     };
+
+    static constexpr uint64 MCB_MAGIC = 0xC0DEC0DEC0DEC0DEUL;
 
     // Pokazivač na početak liste slobodnih blokova
     static MCB *free;

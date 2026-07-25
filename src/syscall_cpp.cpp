@@ -51,7 +51,7 @@ Thread::~Thread() {
 }
 
 // --- KLASA SEMAPHORE ---
-Semaphore::Semaphore(unsigned init) {
+Semaphore::Semaphore(unsigned init) : myHandle(nullptr) {
     sem_open(&myHandle, init);
 }
 

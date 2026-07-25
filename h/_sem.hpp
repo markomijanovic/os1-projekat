@@ -9,7 +9,7 @@
 class _sem
 {
 public:
-    _sem(unsigned int init = 1):value((int)init),head(nullptr),tail(nullptr){}
+    _sem(unsigned int init = 1) : value(init), head(nullptr), tail(nullptr) {}
 
     ~_sem();
 
@@ -20,13 +20,13 @@ public:
     int signal_n(unsigned n );
 
 private:
-    unsigned int value; // SADA JE UNSIGNED (Nema više minusa)
+    unsigned int value;
 
     //Mini FIFO red blokiranih niti ugradjen direktno u semafor
     struct Node
     {
         TCB* thread;
-        unsigned requested; // <--- NOVO: Pamtimo koliko resursa ova nit traži
+        unsigned requested;
         Node* next;
     };
     Node* head;

@@ -24,8 +24,7 @@ TCB *TCB::createThread(Body body,void * arg, bool kernelThread)
 
 void TCB::yield()
 {
-    // Koristimo sirovi asembler da nasilno upišemo 0x13 u a0.
-    // Na ovaj način sprečavamo GCC prevodilac da optimizuje i obriše vrednost!
+    // Direktan ecall za sinhronu promenu konteksta.
     __asm__ volatile ("li a0, 0x13");
     __asm__ volatile ("ecall");
 }
@@ -52,7 +51,6 @@ void TCB::dispatch()
 
     running = Scheduler::get();
 
-    // DODATA ZAŠTITA: Ako je čekaonica prazna, ne radi ništa!
     if (running == nullptr) return;
 
     running->setState(RUNNING);
@@ -76,10 +74,8 @@ void TCB::threadWrapper()
 
     if (running->body)
     {
-        // Ažurirano: Sada prosleđujemo argument funkciji!
         running->body(running->arg);
     }
-    // Ažurirano: Umesto ručnog gašenja, sada zovemo naš novi sistemski poziv!
     thread_exit();
 }
 

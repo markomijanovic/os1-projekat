@@ -2,7 +2,7 @@
 #include "../h/workers.hpp"
 #include "../h/riscv.hpp"
 #include "../h/MemoryAllocator.hpp"
-#include "../h/syscall_c.hpp" // OBAVEZNO: Sada koristimo sistemske pozive za niti!
+#include "../h/syscall_c.hpp"
 #include "../h/syscall_cpp.hpp"
 
 #include "../h/_console.hpp"
@@ -374,12 +374,10 @@ static void runInternalTests()
 
 int main()
 {
-    // 3. Postavljamo prekidnu rutinu
     Riscv::w_stvec((uint64) &Riscv::supervisorTrap);
-    // 1. KLJUČNA IZMENA: Memorija se MORA prva inicijalizovati!
+
     MemoryAllocator::initialize_memory();
 
-    // 2. TEK SADA možemo da bezbedno zovemo "new" za bafere
     _console::init();
 
 
