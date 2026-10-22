@@ -11,7 +11,7 @@ A small educational kernel for the RISC-V architecture, implemented in C, C++, a
 - Custom dynamic memory allocator and global C++ `new`/`delete` integration
 - Supervisor trap handling and user/supervisor execution modes
 - Context switching implemented in RISC-V Assembly
-- Automated kernel tests executed under QEMU
+- Interactive kernel test scenarios executed under QEMU
 
 ## Architecture
 
@@ -75,7 +75,7 @@ Then connect from another terminal using `gdb-multiarch` and the port printed by
 
 ## Tests
 
-The `test/` directory contains scenarios for:
+The `test/` directory contains scenarios selected through the interactive menu in `test/userMain.cpp`. These are not an unattended CI test suite. Scenarios cover:
 
 - C and C++ thread APIs
 - Thread sleeping and timer wakeups
